@@ -48,9 +48,8 @@ class modelBldr():
 
   def eval_metrics(self, model, y_pred):
     print('Accuracy: {}\n'.format(accuracy_score(self.y_test, y_pred)))
-    print('Precision: {}\n'.format(precision_score(self.y_test, y_pred)))
-    print('Recall: {}\n'.format(recall_score(self.y_test, y_pred)))
-    print('ROC_AUC_Score: {}\n'.format(roc_auc_score(self.y_test, y_pred)))
+    print('Precision: {}\n'.format(precision_score(self.y_test, y_pred, average='weighted')))
+    print('Recall: {}\n'.format(recall_score(self.y_test, y_pred, average='weighted')))
     pass
 
   def downsample(self, x_tr, x_te, y_tr, y_te):
