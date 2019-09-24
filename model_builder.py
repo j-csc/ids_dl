@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 import os
+from joblib import dump, load
 
 # Ignore useless warnings
 import warnings
@@ -24,63 +25,70 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder, StandardScaler
 from scipy.spatial.distance import cdist
 from sklearn.utils import resample
-from sklearn.metrics import silhouette_score, homogeneity_completeness_v_measure, accuracy_score, confusion_matrix, roc_auc_score, roc_curve
+from sklearn.metrics import silhouette_score, homogeneity_completeness_v_measure, accuracy_score, confusion_matrix, roc_auc_score, roc_curve, precision_score, recall_score
 
 class modelBldr():
   # Variables
-  df = pd.DataFrame()
+  numerical_cols = pd.DataFrame()
+  target_variables = pd.DataFrame()
+  X_train = []
+  X_test = []
+  y_train = []
+  y_test = []
 
   # Init function
-  def __init__(self):
+  def __init__(self,targetVariablesPath="./data/clean_target_vars.h5", numericalColumnsPath="./data/clean_num_cols.h5"):
+    print("Preparing variables for model...\n")
+    self.numerical_cols = pd.read_hdf(numericalColumnsPath)
+    self.target_variables = pd.read_hdf(targetVariablesPath)
+    self.train_test()
+
+  def train_test(self):
+    self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.numerical_cols, self.target_variables, test_size=0.2, random_state=42)
+
+  def eval_metrics(self, model, y_pred):
+    print('Accuracy: {}\n'.format(accuracy_score(self.y_test, y_pred)))
+    print('Precision: {}\n'.format(precision_score(self.y_test, y_pred)))
+    print('Recall: {}\n'.format(recall_score(self.y_test, y_pred)))
+    print('ROC_AUC_Score: {}\n'.format(roc_auc_score(self.y_test, y_pred)))
     pass
 
-  # Load bulk data
-  def load_data_bulk(self, path="./data"):
-    df_list = []
-    for filename in os.listdir(path):
-      print(("Loading data from {}\n").format(filename))
-      temp_df = pd.read_csv(os.path.join('./data', filename), index_col=None)
-      df_list.append(temp_df)
-    self.df = pd.concat(df_list, axis=0, ignore_index=True)
+  def downsample(self, x_tr, x_te, y_tr, y_te):
+    print("Downsampling dataset...\n")
+    train_df = pd.concat([self.X_train, self.y_train], axis=1)
+    mal = train_df[train_df.label != 0]
+    ben = train_df[train_df.label == 0]
+    ben_downsample = resample(ben, replace=False, n_samples=len(mal), random_state=42)
+    downsampled_df = pd.concat([ben_downsample, mal])
+    print("Result of downsampling...\n")
+    print(downsampled_df.label.value_counts())
+    return downsampled_df.drop('label', axis=1), downsampled_df.label
 
-  def preprocessing(self):
-    # Rename columns
-    print("Renaming columns...\n")
+  def saveModel(self, model, name):
+    dump(model, '{}.joblib'.format(name))
 
-    self.df.rename(columns=lambda x: x.lower().lstrip()
-          .rstrip().replace(" ", "_"), inplace=True)
-    self.df['flow_bytes/s'] = self.df['flow_bytes/s'].astype('float64')
-    self.df['flow_packets/s'] = self.df['flow_packets/s'].astype('float64')
+  def logistic_regression_model(self, downSample=True, randomState=42):
+    X_tr = self.X_train
+    y_tr = self.y_train
+    if downSample == True:
+      X_tr, y_tr = self.downsample(self.X_train, self.X_test, self.y_train, self.y_test)
 
-    # Remove unneccesary columns
-    print("Pruning unneccessary columns...\n")
-    cols = [col for col in list(self.df.columns) if 'mean' not in col and 'variance' not in col 
-            and 'std' not in col and 'min' not in col and 'max' not in col]
-    self.df = self.df[cols]
+    # Fit model
+    print("Fitting logistic regression model with X_train and y_train...\n")
+    lr_model = LogisticRegression(random_state=randomState)
+    lr_model.fit(X_tr, y_tr)
+    y_pred = lr_model.predict(self.X_test)
+    return lr_model, y_pred
 
-    # For categorical labels, one hot encode
-    print("One hot encoding categorical labels...\n")
-    encoder = LabelEncoder()
-    categorical_labels = (encoder.fit_transform(self.df.label))
-    self.df = pd.concat([self.df.drop(['label'], 1),
-              pd.DataFrame({'label': categorical_labels})], axis=1).reindex()
-
-    # find all infinite or -infinite values
-    print("Removing infinite and -infinite values...\n")
-    self.df = self.df.replace([np.inf, -np.inf], np.nan)
-
-    # Drop all nan values and remaining non-finite values
-    self.df = self.df[~np.any(np.isnan(self.df), axis=1)]
-    self.df = self.df[np.all(np.isfinite(self.df), axis=1)]
-
-    # Obtaining cleaned data
-    numerical_cols = self.df[[i for i in list(self.df.columns) if 'label' not in i]]
-    target_variables = self.df.label
-
-    # Saving data to hdf format
-    print("Saving data...\n")
-    self.df.to_hdf('./data/clean_df.h5', key='df', mode='w')
-    numerical_cols.to_hdf('./data/clean_num_cols.h5', key='df', mode='w')
-    target_variables.to_hdf('./data/clean_target_vars.h5', key='df', mode='w')
-
-    print("Finished preprocessing data!\n")
+  def id3_decision_tree_model(self, downSample=True, randomState=42):
+    X_tr = self.X_train
+    y_tr = self.y_train
+    if downSample == True:
+      X_tr, y_tr = self.downsample(self.X_train, self.X_test, self.y_train, self.y_test)
+    
+    # Fit model
+    print("Fitting id3 decision tree model with X_train and y_train...\n")
+    id3_tree_clf = tree.DecisionTreeClassifier()
+    id3_tree_clf.fit(X_tr, y_tr)
+    y_pred = id3_tree_clf.predict(self.X_test)
+    return id3_tree_clf, y_pred
