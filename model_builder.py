@@ -18,6 +18,7 @@ from sklearn.cluster import KMeans, DBSCAN
 from sklearn.linear_model import LogisticRegression
 from sklearn.decomposition import PCA
 from sklearn import tree
+from sklearn.ensemble import RandomForestClassifier
 
 # Misc
 from sklearn.model_selection import GridSearchCV, KFold, cross_val_score, train_test_split
@@ -27,6 +28,7 @@ from scipy.spatial.distance import cdist
 from sklearn.utils import resample
 from sklearn.metrics import silhouette_score, homogeneity_completeness_v_measure, accuracy_score, confusion_matrix, roc_auc_score, roc_curve, precision_score, recall_score
 
+# Main model builder
 class modelBldr():
   # Variables
   numerical_cols = pd.DataFrame()
@@ -91,3 +93,16 @@ class modelBldr():
     id3_tree_clf.fit(X_tr, y_tr)
     y_pred = id3_tree_clf.predict(self.X_test)
     return id3_tree_clf, y_pred
+
+  def random_forest_model(self, downSample=True, randomState=42):
+    X_tr = self.X_train
+    y_tr = self.y_train
+    if downSample == True:
+      X_tr, y_tr = self.downsample(self.X_train, self.X_test, self.y_train, self.y_test)
+    
+    # Fit model
+    print("Fitting random forest model with X_train and y_train...\n")
+    rf_clf = RandomForestClassifier(random_state=randomState, max_depth=5, max_features='auto', criterion='gini', bootstrap=True)
+    rf_clf.fit(X_tr, y_tr)
+    y_pred = rf_clf.predict(self.X_test)
+    return rf_clf, y_pred

@@ -5,9 +5,8 @@ def main():
   # preprocessor.load_data_bulk()
   # preprocessor.preprocessing()
   model = mdbldr()
-  lr_mdl, y_pred = model.id3_decision_tree_model()
-  model.eval_metrics(lr_mdl, y_pred)
-  model.saveModel(lr_mdl, "ID3_decision_tree_model")
+  mdl, y_pred = model.random_forest_model()
+  model.eval_metrics(mdl, y_pred)
+  model.saveModel(mdl, "Random_Forest_model")
   pass
-
 main()
