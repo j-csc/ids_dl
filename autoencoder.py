@@ -24,7 +24,7 @@ class SparseAutoEncoder(nn.Module):
     self.feature_size = feature_size
     self.hidden_size = hidden_size
 
-    # Encoder-Decoder layers
+    # Encoder layers
     self.layer1 = nn.Linear(feature_size, hidden_size)
     self.layer2 = nn.Linear(hidden_size, feature_size)
 
@@ -36,10 +36,10 @@ class SparseAutoEncoder(nn.Module):
   
 # Difference in going from p to pHat tensors
 def kl_divergence(p, pHat):
-  funcs = nn.Sigmoid()
-  pHat = torch.mean(funcs(pHat), 1)
-  p_tensor = torch.Tensor([p] * len(pHat)).to(device)
-  return torch.sum(p_tensor * torch.log(p_tensor) - p_tensor * torch.log(pHat) + (1 - p_tensor) * torch.log(1 - p_tensor) - (1 - p_tensor) * torch.log(1 - pHat))
+  pHat = torch.mean(torch.sigmoid(pHat))
+  p = torch.tensor(p)
+  res = torch.sum(p * torch.log(p) - p * torch.log(pHat) + (1 - p) * torch.log(1 - p) - (1 - p) * torch.log(1 - pHat))
+  return res
 
 def custom_loss(xHat, x, W, V, b1, b2):
   m = len(x)
@@ -52,12 +52,13 @@ def custom_loss(xHat, x, W, V, b1, b2):
 # Train
 def train_encoder(save=True):
   df = pd.read_hdf('./data/clean_num_cols.h5')
-  train = torch.utils.data.TensorDataset(torch.Tensor(np.array(df)))
+  targets = pd.read_hdf('./data/clean_target_vars.h5')
+
+  train = torch.utils.data.TensorDataset(torch.Tensor(np.array(df)), torch.Tensor(np.array(targets)))
   train_loader = torch.utils.data.DataLoader(train, batch_size=64)
   
-  net = SparseAutoEncoder(feature_size=44, hidden_size=22)
-  print(net)
-  
+  # Training autoencoder
+  net = SparseAutoEncoder(feature_size=44, hidden_size=22)  
   if torch.cuda.is_available():
     net = net.cuda()
   
@@ -67,21 +68,52 @@ def train_encoder(save=True):
   net.train()
 
   for epoch in range(EPOCHS):
-    for batch_idx, x in enumerate(train_loader):
+    for batch_idx, (x,y) in enumerate(train_loader):
       x = Variable(x[0])
       optimizer.zero_grad()
-      outputs = net(x)
+      outputs = net.forward(x)
       mse_loss = criterion(outputs, x)
       kl_loss = custom_loss(outputs, x, net.layer1.weight.data,
        net.layer2.weight.data, net.layer1.bias.data, net.layer2.bias.data)
-      loss = mse_loss + kl_loss * 1e-3
+      loss = kl_loss
       loss.backward()
       optimizer.step()
-      if batch_idx % 1000 == 0:
-        print('Epoch [{}/{}] - Iter[{}/{}] \t Total Loss: {}'.format(
-          epoch+1, EPOCHS, batch_idx, len(train_loader.dataset)//64, loss))
+      if batch_idx % 10000 == 0:
+        print('Epoch [{}/{}] - Iter[{}/{}] \t KL Divergence: {}'.format(
+          epoch+1, EPOCHS, batch_idx, len(train_loader.dataset)//64, loss.item()))
+  
+  # Remove decoder and add classifier
+  new_classifier = nn.Sequential(*list(net.children())[:-1])
+  net = new_classifier
+  net.add_module('classifier', nn.Sequential(
+    nn.Linear(22, 15),
+    nn.Softmax(1)
+  ))
+
+  print(net)
+
+  criterion = nn.CrossEntropyLoss()
+
+  for epoch in range(EPOCHS):
+    running_corr = 0.0
+    for i, data in enumerate(train_loader):
+      x, y = data
+      x = Variable(x)
+      y = Variable(y)
+      net.zero_grad()
+      outputs = net.forward(x)
+      loss = criterion(outputs, y.long())
+      loss.backward()
+      optimizer.step()
+
+      # Eval
+      preds = torch.argmax(outputs, 1)
+      running_corr += torch.sum(preds.long() == y.long()).item()
+      corr_percentage = running_corr / ((i+1)*(64))
+      if i % 10000 == 0:
+        print("Epoch: [{}/{}] - Iter[{}/{}] - Epoch loss: {} - Epoch accuracy: {}".format(epoch+1, EPOCHS, i+1, len(train_loader.dataset)//64, loss.item(), corr_percentage))
   if save == True:
-    torch.save(net.state_dict(), './savedModels/Autoencoder.pt')
+      torch.save(net.state_dict(), './saved_models/Autoencoder.pt')
 
 if __name__ == "__main__":
   train_encoder(save=True)
