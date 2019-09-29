@@ -39,11 +39,13 @@ class modelBldr():
   y_test = []
 
   # Init function
-  def __init__(self,targetVariablesPath="./data/clean_target_vars.h5", numericalColumnsPath="./data/clean_num_cols.h5"):
+  def __init__(self,targetVariablesPath="./data/clean_target_vars.h5", numericalColumnsPath="./data/clean_num_cols.h5", downsample=True):
     print("Preparing variables for model...\n")
     self.numerical_cols = pd.read_hdf(numericalColumnsPath)
     self.target_variables = pd.read_hdf(targetVariablesPath)
     self.train_test()
+    if downsample == True:
+      self.X_train, self.y_train = self.downsample(self.X_train, self.X_test, self.y_train, self.y_test)
 
   def train_test(self):
     self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.numerical_cols, self.target_variables, test_size=0.2, random_state=42)
@@ -71,8 +73,8 @@ class modelBldr():
   def logistic_regression_model(self, downSample=True, randomState=42):
     X_tr = self.X_train
     y_tr = self.y_train
-    if downSample == True:
-      X_tr, y_tr = self.downsample(self.X_train, self.X_test, self.y_train, self.y_test)
+    # if downSample == True:
+    #   X_tr, y_tr = self.downsample(self.X_train, self.X_test, self.y_train, self.y_test)
 
     # Fit model
     print("Fitting logistic regression model with X_train and y_train...\n")
@@ -84,8 +86,8 @@ class modelBldr():
   def id3_decision_tree_model(self, downSample=True, randomState=42):
     X_tr = self.X_train
     y_tr = self.y_train
-    if downSample == True:
-      X_tr, y_tr = self.downsample(self.X_train, self.X_test, self.y_train, self.y_test)
+    # if downSample == True:
+    #   X_tr, y_tr = self.downsample(self.X_train, self.X_test, self.y_train, self.y_test)
     
     # Fit model
     print("Fitting id3 decision tree model with X_train and y_train...\n")
@@ -97,8 +99,8 @@ class modelBldr():
   def random_forest_model(self, downSample=True, randomState=42):
     X_tr = self.X_train
     y_tr = self.y_train
-    if downSample == True:
-      X_tr, y_tr = self.downsample(self.X_train, self.X_test, self.y_train, self.y_test)
+    # if downSample == True:
+    #   X_tr, y_tr = self.downsample(self.X_train, self.X_test, self.y_train, self.y_test)
     
     # Fit model
     print("Fitting random forest model with X_train and y_train...\n")

@@ -24,14 +24,17 @@ class SparseAutoEncoder(nn.Module):
     self.feature_size = feature_size
     self.hidden_size = hidden_size
 
+    # Sigmoid layer
+    self.sigmoid = nn.Sigmoid()
+
     # Encoder layers
     self.layer1 = nn.Linear(feature_size, hidden_size)
     self.layer2 = nn.Linear(hidden_size, feature_size)
 
   # Feedforward
   def forward(self, x):
-    x = F.sigmoid(self.layer1(x))
-    x = F.sigmoid(self.layer2(x))
+    x = self.sigmoid(self.layer1(x))
+    x = self.sigmoid(self.layer2(x))
     return x
   
 # Difference in going from p to pHat tensors
@@ -113,7 +116,22 @@ def train_encoder(save=True):
       if i % 10000 == 0:
         print("Epoch: [{}/{}] - Iter[{}/{}] - Epoch loss: {} - Epoch accuracy: {}".format(epoch+1, EPOCHS, i+1, len(train_loader.dataset)//64, loss.item(), corr_percentage))
   if save == True:
-      torch.save(net.state_dict(), './saved_models/Autoencoder.pt')
+      torch.save(net, './saved_models/Autoencoder.pt')
+
+# Testing
+def predict(model, df_path='./data/clean_num_cols.h5'):
+  df = pd.read_hdf(df_path)
+
+  test = torch.utils.data.TensorDataset(torch.Tensor(np.array(df)))
+  predict_loader = torch.utils.data.DataLoader(test, batch_size=64)
+
+  # generate prediction
+  for i, data in enumerate(predict_loader):
+    data = Variable(data[0])
+    outputs = model.forward(data)
+    # Argmax for prediction, Max for probability
+    print(torch.argmax(outputs,1), torch.max(outputs,1))
+
 
 if __name__ == "__main__":
   train_encoder(save=True)
