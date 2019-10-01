@@ -4,12 +4,13 @@
 
 ## Introduction
 
-This repository is my implementation of a research paper about building Intrusion Detection Systems with Deep Learning. The main model used is a sparse autoencoder connected with a softmax classifier. The link to the actual paper is here: ![Link to paper](https://eudl.eu/pdf/10.4108/eai.3-12-2015.2262516)
+This repository is my implementation of a research paper about building Intrusion Detection Systems with Deep Learning. The main model used is a sparse autoencoder connected with a softmax classifier. The link to the actual paper is here: [Link to paper](https://eudl.eu/pdf/10.4108/eai.3-12-2015.2262516)
 
 ## Brief overview of models
 
 The model I implemented with pytorch can be found in the `autoencoder.py` file.
 Here's the structure of the neural network:
+
 ![Architecture](imgs/architecture.png)
 
 The other models used contains a Random Forest model, a Logistic Regression Model and a ID3 Decision Tree.
@@ -38,11 +39,11 @@ In this project, the ISCX dataset mimics a real life scenario where less than 10
 
 Here's a sample flow of predicting network intrusion with the sparse autoencoder.
 
-![Link to Flowmeter](https://github.com/ISCX/CICFlowMeter)
+[Link to Flowmeter](https://github.com/ISCX/CICFlowMeter)
 
 ![Workflow](imgs/sample_flow.png)
 
-## Overview of repository
+## Final overview of repository
 
 This repository contains the following: 
 
