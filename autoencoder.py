@@ -125,13 +125,21 @@ def predict(model, df_path='./data/clean_num_cols.h5'):
   test = torch.utils.data.TensorDataset(torch.Tensor(np.array(df)))
   predict_loader = torch.utils.data.DataLoader(test, batch_size=64)
 
+  mal = 0
+
   # generate prediction
   for i, data in enumerate(predict_loader):
     data = Variable(data[0])
     outputs = model.forward(data)
     # Argmax for prediction, Max for probability
-    print(torch.argmax(outputs,1), torch.max(outputs,1))
-
+    pred = torch.argmax(outputs, 1).numpy()
+    for p in pred:
+      if p != 0:
+        mal += 1
+  if mal == 0:
+    print("Your PCAP file has no intrusions detected. \n")
+  else:
+    print("Your PCAP file has"+ mal +"intrusions detected. \n")
 
 if __name__ == "__main__":
   train_encoder(save=True)
